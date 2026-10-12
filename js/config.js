@@ -17,7 +17,7 @@ export const firebaseConfig = {
 //    cloudName: aparece no Dashboard do Cloudinary
 //    uploadPreset: nome do "upload preset" do tipo UNSIGNED que você criar
 export const cloudinaryConfig = {
-  cloudName: "COLE_AQUI_SEU_CLOUD_NAME",
+  cloudName: "fdxmtyzr",
   uploadPreset: "zazum_unsigned",
   folder: "zazum"
 };
