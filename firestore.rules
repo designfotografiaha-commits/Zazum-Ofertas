@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function validOffer(d) {
+      return d.affiliateUrl is string && d.affiliateUrl.matches('https://.+')
+        && d.price is number && d.price > 0 && d.productId is string;
+    }
+
+    function okText(v, n) { return v is string && v.size() <= n; }
+
+    function validClick(d) {
+      return d.keys().hasOnly(['at','offerId','productId','categoryId','marketplace','section','source','medium','campaign','referrer'])
+        && d.at == request.time
+        && okText(d.offerId, 60) && okText(d.productId, 30) && okText(d.categoryId, 60)
+        && okText(d.marketplace, 30) && okText(d.section, 30) && okText(d.source, 80)
+        && okText(d.medium, 80) && okText(d.campaign, 80) && okText(d.referrer, 80);
+    }
+
+    function onlyClickPlusOne() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks'])
+        && request.resource.data.clicks == resource.data.get('clicks', 0) + 1;
+    }
+
+    match /public/{id}     { allow read: if true; allow write: if isAdmin(); }
+    match /products/{id}   { allow read, write: if isAdmin(); }
+    match /categories/{id} { allow read, write: if isAdmin(); }
+    match /settings/{id}   { allow read, write: if isAdmin(); }
+    match /counters/{id}   { allow read, write: if isAdmin(); }
+
+    match /offers/{id} {
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && validOffer(request.resource.data);
+      allow update: if (isAdmin() && validOffer(request.resource.data)) || onlyClickPlusOne();
+    }
+
+    match /clicks/{id} {
+      allow read, delete: if isAdmin();
+      allow create: if validClick(request.resource.data);
+    }
+
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
